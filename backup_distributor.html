@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backup Distributor Portal</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f3f6fa;
+        margin: 0;
+        padding: 0;
+    }
+    header {
+        background-color: #0073e6;
+        color: white;
+        padding: 15px;
+        text-align: center;
+    }
+    .container {
+        max-width: 500px;
+        margin: 50px auto;
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    h2 {
+        text-align: center;
+        color: #333;
+    }
+    input, button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 12px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+    }
+    button {
+        background-color: #0073e6;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+    button:hover {
+        background-color: #005bb5;
+    }
+    .dashboard {
+        display: none;
+    }
+    .order {
+        padding: 15px;
+        background: #f9f9f9;
+        margin-top: 10px;
+        border-radius: 5px;
+        border-left: 5px solid orange;
+    }
+    .accept-btn, .reject-btn {
+        margin-top: 8px;
+        padding: 6px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .accept-btn { background: green; color: white; }
+    .reject-btn { background: red; color: white; }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>Backup Distributor Portal</h1>
+</header>
+
+<div class="container login">
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+</div>
+
+<div class="container dashboard">
+    <h2>Orders Needing Backup Fulfillment</h2>
+    <div id="orders"></div>
+</div>
+
+<script>
+    const orders = [
+        { id: 1, pharmacy: "GreenCare Pharmacy", item: "Paracetamol 500mg", qty: 200 },
+        { id: 2, pharmacy: "City Health Store", item: "Vitamin C 1000mg", qty: 150 },
+        { id: 3, pharmacy: "LifeLine Pharmacy", item: "Cough Syrup", qty: 50 }
+    ];
+
+    function login() {
+        document.querySelector(".login").style.display = "none";
+        document.querySelector(".dashboard").style.display = "block";
+        loadOrders();
+    }
+
+    function loadOrders() {
+        const ordersDiv = document.getElementById("orders");
+        ordersDiv.innerHTML = "";
+        orders.forEach(order => {
+            const div = document.createElement("div");
+            div.className = "order";
+            div.innerHTML = `
+                <strong>Pharmacy:</strong> ${order.pharmacy} <br>
+                <strong>Item:</strong> ${order.item} <br>
+                <strong>Quantity:</strong> ${order.qty} <br>
+                <button class="accept-btn" onclick="acceptOrder(${order.id})">Accept</button>
+                <button class="reject-btn" onclick="rejectOrder(${order.id})">Reject</button>
+            `;
+            ordersDiv.appendChild(div);
+        });
+    }
+
+    function acceptOrder(id) {
+        alert("Order " + id + " accepted for fulfillment.");
+    }
+
+    function rejectOrder(id) {
+        alert("Order " + id + " rejected.");
+    }
+</script>
+
+</body>
+</html>

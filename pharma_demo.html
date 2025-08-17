@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pharma Supply Demo – Distributor Controls Backup</title>
+<style>
+  :root { --bg:#f6f8fb; --card:#fff; --muted:#667085; --primary:#1363df; --ok:#1b9e3c; --warn:#f59e0b; --danger:#dc2626; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: var(--bg); color:#111; }
+  header { padding:16px 20px; background:#0b4fb3; color:#fff; font-weight:600; }
+  .grid { display:grid; gap:20px; padding:20px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  .card { background:var(--card); border-radius:14px; box-shadow: 0 6px 20px rgba(0,0,0,.06); padding:16px; }
+  .card h2 { margin:0 0 10px; font-size:18px; }
+  .order { border:1px solid #e5e7eb; border-radius:12px; padding:12px; margin:10px 0; background:#fff; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .pill { padding:4px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+  .pill.pending { background:#eef2ff; color:#312e81; }
+  .pill.progress { background:#ecfeff; color:#155e75; }
+  .pill.dispatched { background:#ecfdf5; color:#065f46; }
+  .pill.delivered { background:#ecfdf5; color:#065f46; }
+  .pill.backup { background:#fff7ed; color:#9a3412; }
+  .pill.declined { background:#fee2e2; color:#7f1d1d; }
+  select, button { padding:8px 10px; border-radius:8px; border:1px solid #d1d5db; background:#fff; }
+  button { border:none; background:var(--primary); color:#fff; cursor:pointer; font-weight:600; }
+  button.secondary { background:#e5e7eb; color:#111; }
+  button.ok { background:var(--ok); }
+  button.warn { background:var(--warn); }
+  button.danger { background:var(--danger); }
+  .muted { color:var(--muted); font-size:12px; }
+  hr { border:none; border-top:1px dashed #e5e7eb; margin:12px 0; }
+</style>
+</head>
+<body>
+<header>Pharma Supply Demo — Distributor controls backup sourcing</header>
+
+<div class="grid">
+  <!-- Distributor -->
+   
+  <section class="card" id="distributorCard">
+    <h2>Distributor Dashboard</h2>
+    <p class="muted">Set stock per order. If Out of Stock, request from backup.</p>
+    <div id="distributorOrders"></div>
+  </section>
+
+  <!-- Pharmacy -->
+  <section class="card">
+    <h2>Pharmacy Dashboard</h2>
+    <p class="muted">Pharmacy sees only status, never the backup supplier.</p>
+    <div id="pharmacyOrders"></div>
+  </section>
+
+  <!-- Backup Distributor -->
+  <section class="card">
+    <h2>Backup Distributor Dashboard</h2>
+    <p class="muted">Shows backup requests sent by primary distributors.</p>
+    <div id="backupRequests"></div>
+  </section>
+</div>
+
+<script>
+  // --- demo data ---
+  const orders = [
+    { id: 101, pharmacy: "Pharma Plus", product: "Paracetamol 500mg", qty: 120, status: "Pending", stock:"in", backupRequested:false, backupAccepted:false, declined:false },
+    { id: 102, pharmacy: "HealthCare Meds", product: "Amoxicillin 250mg",  qty: 60,  status: "Pending", stock:"out", backupRequested:false, backupAccepted:false, declined:false },
+    { id: 103, pharmacy: "CityChemist",    product: "Vitamin C 1000mg",  qty: 90,  status: "Pending", stock:"in",  backupRequested:false, backupAccepted:false, declined:false },
+  ];
+
+  // --- helpers ---
+  const el = sel => document.querySelector(sel);
+  const html = (strings, ...vals) =>
+    strings.reduce((acc, s, i) => acc + s + (vals[i] ?? ""), "");
+
+  function statusPill(o){
+    if (o.declined) return `<span class="pill declined">Backup Declined</span>`;
+    if (o.status === "Pending") return `<span class="pill pending">Pending</span>`;
+    if (o.status === "Backup Requested") return `<span class="pill backup">Backup Requested</span>`;
+    if (o.status === "In Progress (Backup)") return `<span class="pill progress">In Progress (Backup)</span>`;
+    if (o.status === "Dispatched") return `<span class="pill dispatched">Dispatched</span>`;
+    if (o.status === "Delivered") return `<span class="pill delivered">Delivered</span>`;
+    return `<span class="pill">${o.status}</span>`;
+  }
+
+  // --- renderers ---
+  function renderDistributor(){
+    const container = el("#distributorOrders");
+    container.innerHTML = "";
+    orders.forEach(o => {
+      const card = document.createElement("div");
+      card.className = "order";
+      card.innerHTML = html`
+        <div class="row" style="justify-content:space-between;">
+          <div><strong>#${o.id}</strong> — ${o.product} · Qty ${o.qty}<br><span class="muted">${o.pharmacy}</span></div>
+          <div>${statusPill(o)}</div>
+        </div>
+        <hr/>
+        <div class="row">
+          <label class="muted">Stock Status:&nbsp;</label>
+          <select onchange="setStock(${o.id}, this.value)">
+            <option value="in"  ${o.stock==="in"  ? "selected":""}>In Stock</option>
+            <option value="out" ${o.stock==="out" ? "selected":""}>Out of Stock</option>
+          </select>
+
+          ${o.stock==="in" && !o.backupRequested && o.status==="Pending" ? 
+            `<button class="ok" onclick="markDispatched(${o.id})">Mark Dispatched</button>` : ""}
+
+          ${o.stock==="out" && !o.backupRequested ? 
+            `<button onclick="requestBackup(${o.id})">Request from Backup</button>` : ""}
+
+          ${o.backupRequested && !o.backupAccepted && !o.declined ? 
+            `<span class="muted">Waiting for backup to accept…</span>` : ""}
+
+          ${o.backupAccepted && o.status!=="Delivered" ? 
+            `<button class="ok" onclick="markDelivered(${o.id})">Mark Delivered</button>` : ""}
+
+          ${o.declined ? 
+            `<button class="warn" onclick="retryBackup(${o.id})">Retry Backup</button>` : ""}
+
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function renderPharmacy(){
+    const container = el("#pharmacyOrders");
+    container.innerHTML = "";
+    orders.forEach(o => {
+      const div = document.createElement("div");
+      div.className = "order";
+      div.innerHTML = html`
+        <div class="row" style="justify-content:space-between;">
+          <div><strong>#${o.id}</strong> — ${o.product} · Qty ${o.qty}</div>
+          <div>${statusPill(o)}</div>
+        </div>
+        <div class="muted">
+          ${o.status==="Pending" ? "Order received by your distributor." : ""}
+          ${o.status==="Backup Requested" ? "Sourcing your items." : ""}
+          ${o.status==="In Progress (Backup)" ? "Order is being fulfilled." : ""}
+          ${o.status==="Dispatched" ? "On the way." : ""}
+          ${o.status==="Delivered" ? "Delivered. Thank you!" : ""}
+          ${o.declined ? "Sourcing attempt failed. Distributor will retry." : ""}
+        </div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  function renderBackup(){
+    const container = el("#backupRequests");
+    container.innerHTML = "";
+    const pending = orders.filter(o => o.backupRequested && !o.backupAccepted && !o.declined);
+    if (!pending.length){
+      container.innerHTML = `<div class="muted">No pending backup requests.</div>`;
+      return;
+    }
+    pending.forEach(o => {
+      const div = document.createElement("div");
+      div.className = "order";
+      div.innerHTML = html`
+        <div class="row" style="justify-content:space-between;">
+          <div><strong>Request for #${o.id}</strong><br>${o.product} · Qty ${o.qty}<br><span class="muted">From ${o.pharmacy}'s primary distributor</span></div>
+        </div>
+        <hr/>
+        <div class="row">
+          <button class="ok" onclick="acceptBackup(${o.id})">Accept</button>
+          <button class="danger" onclick="declineBackup(${o.id})">Decline</button>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  function renderAll(){ renderDistributor(); renderPharmacy(); renderBackup(); }
+
+  // --- actions (distributor) ---
+  function setStock(id, val){
+    const o = orders.find(x => x.id===id);
+    o.stock = val;
+    // if stock changes, clear previous backup outcomes so demo looks clean
+    if (val === "in"){
+      o.backupRequested = false;
+      o.backupAccepted = false;
+      o.declined = false;
+      if (o.status === "Backup Requested" || o.status === "In Progress (Backup)") {
+        o.status = "Pending";
+      }
+    }
+    renderAll();
+  }
+
+  function requestBackup(id){
+    const o = orders.find(x => x.id===id);
+    o.backupRequested = true;
+    o.status = "Backup Requested";
+    o.declined = false;
+    o.backupAccepted = false;
+    renderAll();
+  }
+
+  function markDispatched(id){
+    const o = orders.find(x => x.id===id);
+    o.status = "Dispatched";
+    renderAll();
+  }
+
+  function markDelivered(id){
+    const o = orders.find(x => x.id===id);
+    o.status = "Delivered";
+    renderAll();
+  }
+
+  function retryBackup(id){
+    const o = orders.find(x => x.id===id);
+    o.declined = false;
+    o.backupRequested = true;
+    o.status = "Backup Requested";
+    renderAll();
+  }
+
+  // --- actions (backup distributor) ---
+  function acceptBackup(id){
+    const o = orders.find(x => x.id===id);
+    o.backupAccepted = true;
+    o.status = "In Progress (Backup)";
+    renderAll();
+  }
+  function declineBackup(id){
+    const o = orders.find(x => x.id===id);
+    o.declined = true;
+    renderAll();
+  }
+
+  // expose handlers to window for inline onclick
+  window.setStock = setStock;
+  window.requestBackup = requestBackup;
+  window.markDispatched = markDispatched;
+  window.markDelivered = markDelivered;
+  window.acceptBackup = acceptBackup;
+  window.declineBackup = declineBackup;
+  window.retryBackup = retryBackup;
+
+  // initial render
+  renderAll();
+</script>
+</body>
+</html>
