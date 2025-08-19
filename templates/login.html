@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PharmaConnect - Login</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #6a11cb; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
+    .login-container { background:#fff; padding:30px; border-radius:15px; width:350px; box-shadow:0 8px 25px rgba(0,0,0,0.2); text-align:center; }
+    h2 { margin-bottom:20px; color:#333; }
+    select,input { width:100%; padding:12px; margin:10px 0; border:1px solid #ccc; border-radius:8px; outline:none; }
+    select:focus,input:focus { border-color:#007bff; }
+    button[type="submit"] { width:100%; padding:12px; margin-top:15px; border:none; border-radius:8px; background:#28a745; color:white; font-size:16px; cursor:pointer; }
+    button[type="submit"]:hover { background:#218838; }
+    .error { color:red; margin-top:10px; }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <h2>PharmaConnect Login</h2>
+    
+    <form method="POST" action="/">
+      <select name="role" required>
+        <option value="" disabled selected>Select role</option>
+        <option value="pharmacy">Pharmacy</option>
+        <option value="distributor">Distributor</option>
+        <option value="backup">Backup Distributor</option>
+      </select>
+
+      <input type="text" name="username" placeholder="Enter Username" required>
+      <input type="password" name="password" placeholder="Enter Password" id="password_input">
+      <input type="text" name="secret_code" placeholder="Enter Distributor Secret Code" id="secret_code_input" style="display:none;">
+
+      <button type="submit">Login</button>
+    </form>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+  </div>
+
+  <script>
+    const roleSelect = document.querySelector('select[name="role"]');
+    const passwordInput = document.getElementById('password_input');
+    const secretCodeInput = document.getElementById('secret_code_input');
+
+    roleSelect.addEventListener('change', function() {
+      if(this.value === 'pharmacy'){
+        secretCodeInput.style.display = 'block';
+        secretCodeInput.required = true;
+        passwordInput.style.display = 'none';
+        passwordInput.required = false;
+      } else {
+        secretCodeInput.style.display = 'none';
+        secretCodeInput.required = false;
+        passwordInput.style.display = 'block';
+        passwordInput.required = true;
+      }
+    });
+  </script>
+</body>
+</html>

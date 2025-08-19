@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Distributor Dashboard</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #f2f2f2; text-align: center; padding: 50px; }
+    button { padding: 12px 25px; font-size: 16px; cursor: pointer; }
+    #code_display { margin-top: 20px; font-size: 20px; color: green; }
+    #error { margin-top: 20px; font-size: 18px; color: red; }
+  </style>
+</head>
+<body>
+  <h1>Distributor Dashboard</h1>
+  <button id="generate_code_btn">Generate Secret Code for Pharmacy</button>
+  <div id="code_display"></div>
+  <div id="error"></div>
+
+  <script>
+    const btn = document.getElementById("generate_code_btn");
+    const codeDisplay = document.getElementById("code_display");
+    const errorDisplay = document.getElementById("error");
+
+    btn.addEventListener("click", async () => {
+      codeDisplay.textContent = "";
+      errorDisplay.textContent = "";
+      try {
+        const response = await fetch("/generate_distributor_code", { method: "POST" });
+        const data = await response.json();
+        if (data.code) {
+          codeDisplay.textContent = "Secret Code: " + data.code;
+        } else if (data.error) {
+          errorDisplay.textContent = "Error: " + data.error;
+        }
+      } catch (err) {
+        errorDisplay.textContent = "Error generating code!";
+      }
+    });
+  </script>
+</body>
+</html>

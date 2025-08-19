@@ -72,6 +72,13 @@
     <p>Welcome, Distributor #001</p>
 </header>
 
+<!-- Secret Code Section -->
+<section class="section">
+    <h3>Generate Secret Code for Pharmacy</h3>
+    <button onclick="generateCode()">Generate Code</button>
+    <p id="generatedCode" style="font-weight:bold; color:#007bff; margin-top:10px;"></p>
+</section>
+
 <!-- Current Stock Section -->
 <section class="section">
     <h3>Current Stock</h3>
@@ -224,7 +231,6 @@
 
     function sendPayment(index) {
         alert(`Payment request sent to ${newOrders[index].pharmacy}`);
-        // Move each medicine as a separate incoming order
         newOrders[index].medicines.forEach(med => {
             orders.push({ pharmacy: newOrders[index].pharmacy, medicine: med.name, qty: med.qty, status: "Pending" });
         });
@@ -233,9 +239,16 @@
         loadOrders();
     }
 
-    loadStock();
-    loadNewOrders();
-    loadOrders();
+    // Secret Code Generator
+    function generateCode() {
+    fetch("/generate_distributor_code", { method: "POST" })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById("generatedCode").innerText = `Secret Code: ${data.code}`;
+        alert(`Secret Code generated: ${data.code}`);
+    })
+    .catch(err => console.error(err));
+}
 </script>
 
 </body>
