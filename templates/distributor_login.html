@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Distributor Login</title>
+<style>
+body { font-family: Arial; text-align: center; margin-top: 50px; }
+input, button { padding: 10px; margin: 5px; width: 200px; }
+</style>
+</head>
+<body>
+<h2>Distributor Login</h2>
+<form method="POST">
+<input type="text" name="username" placeholder="Username" required><br>
+<input type="password" name="password" placeholder="Password" required><br>
+<button type="submit">Login</button>
+</form>
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <p style="color: {% if category=='danger' %}red{% else %}green{% endif %}">{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+</body>
+</html>

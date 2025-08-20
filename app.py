@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session, jsonify
+from flask import Flask, render_template, request, redirect, session
 from flask_sqlalchemy import SQLAlchemy
 import random, string
 
@@ -12,10 +12,10 @@ db = SQLAlchemy(app)
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
-    password = db.Column(db.String(100))  # for distributor and backup
+    password = db.Column(db.String(100))
     role = db.Column(db.String(20), nullable=False)
-    secret_code = db.Column(db.String(20))  # for pharmacy login
-    linked_distributor_id = db.Column(db.Integer)  # link pharmacy to distributor
+    secret_code = db.Column(db.String(20))
+    linked_distributor_id = db.Column(db.Integer)
 
 # ------------------ ROUTES ------------------
 @app.route("/", methods=["GET", "POST"])
@@ -24,33 +24,27 @@ def login():
         role = request.form["role"]
         username = request.form["username"].lower()
         password = request.form.get("password")
-        secret_code = request.form.get("secret_code")
 
-        if role == "pharmacy":
-            # Get pharmacy by username
-            pharmacy = User.query.filter_by(username=username, role="pharmacy").first()
-            if pharmacy and pharmacy.linked_distributor_id:
-                # Get linked distributor
-                distributor = User.query.get(pharmacy.linked_distributor_id)
-                if distributor and distributor.secret_code == secret_code:
-                    # Login successful
-                    session["username"] = pharmacy.username
-                    session["role"] = pharmacy.role
-                    return redirect("/pharmacy")
-            # Invalid credentials
-            return render_template("login.html", error="Invalid credentials!")
-
-        else:  # distributor or backup
+        # Distributor / Backup login
+        if role in ["distributor", "backup"]:
             user = User.query.filter_by(username=username, password=password, role=role).first()
             if user:
                 session["username"] = user.username
                 session["role"] = user.role
                 if role == "distributor":
                     return redirect("/distributor")
-                elif role == "backup":
+                else:
                     return redirect("/backup")
-            else:
-                return render_template("login.html", error="Invalid credentials!")
+            return render_template("login.html", error="Invalid credentials!")
+
+        # Pharmacy login
+        elif role == "pharmacy":
+            user = User.query.filter_by(username=username, password=password, role="pharmacy").first()
+            if user:
+                session["username"] = user.username
+                session["role"] = user.role
+                return redirect("/pharmacy")
+            return render_template("login.html", error="Invalid credentials!")
 
     return render_template("login.html")
 
@@ -59,46 +53,75 @@ def login():
 def distributor_dashboard():
     if session.get("role") != "distributor":
         return redirect("/")
-    return render_template("distributor.html")
+    
+    distributor = User.query.filter_by(username=session["username"], role="distributor").first()
+    return render_template("distributor_dashboard.html", distributor=distributor)
+
 
 @app.route("/pharmacy")
 def pharmacy_dashboard():
     if session.get("role") != "pharmacy":
         return redirect("/")
-    return render_template("pharmacy.html")
+    return render_template("pharmacy_dashboard.html", username=session["username"])
 
-# ------------------ GENERATE SECRET CODE ------------------
-@app.route("/generate_distributor_code", methods=["POST"])
-def generate_distributor_code():
-    distributor_username = session.get("username")
-    if not distributor_username or session.get("role") != "distributor":
-        return {"error": "Unauthorized"}, 401
 
-    distributor = User.query.filter_by(username=distributor_username, role="distributor").first()
+@app.route("/pharmacy_register/<invite_code>")
+def pharmacy_register(invite_code):
+    distributor = User.query.filter_by(secret_code=invite_code, role="distributor").first()
     if not distributor:
-        return {"error": "Distributor not found"}, 404
+        return "Invalid or expired invite link", 400
+    
+    return render_template("pharmacy_register.html", distributor=distributor, invite_code=invite_code)
 
-    # Generate unique 6-char code
-    code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-    distributor.secret_code = code
+
+
+@app.route("/pharmacy_register_submit", methods=["POST"])
+def pharmacy_register_submit():
+    username = request.form["username"]
+    password = request.form["password"]
+    invite_code = request.form["invite_code"]
+
+    # Find distributor by invite code
+    distributor = User.query.filter_by(secret_code=invite_code, role="distributor").first()
+    if not distributor:
+        return "Invalid invite code", 400
+
+    # Check if pharmacy username already exists
+    existing_user = User.query.filter_by(username=username).first()
+    if existing_user:
+        return "Username already taken", 400
+
+    # Create new pharmacy linked to distributor
+    pharmacy = User(
+        username=username,
+        password=password,
+        role="pharmacy",
+        linked_distributor_id=distributor.id
+    )
+    db.session.add(pharmacy)
     db.session.commit()
-    return {"code": code}
+
+    return f"Pharmacy {username} registered successfully under Distributor {distributor.username}! <a href='/'>Login</a>"
+
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/")
+
 
 # ------------------ INIT ------------------
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
 
-        # Sample users if database empty
+        # Sample users if database is empty
         if not User.query.first():
             distributor = User(username="distributor", password="123", role="distributor")
-            # Link pharmacy to distributor using distributor.id after commit
-            db.session.add(distributor)
-            db.session.commit()
-
-            pharmacy = User(username="pharmacy", role="pharmacy", linked_distributor_id=distributor.id)
+            pharmacy = User(username="pharmacy", password="123", role="pharmacy", linked_distributor_id=1)
             backup = User(username="backup", password="123", role="backup")
-            db.session.add_all([pharmacy, backup])
+            db.session.add_all([distributor, pharmacy, backup])
             db.session.commit()
 
     app.run(debug=True)

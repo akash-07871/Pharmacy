@@ -1,42 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Distributor Dashboard</title>
-  <style>
-    body { font-family: 'Segoe UI', sans-serif; background: #f2f2f2; text-align: center; padding: 50px; }
-    button { padding: 12px 25px; font-size: 16px; cursor: pointer; }
-    #code_display { margin-top: 20px; font-size: 20px; color: green; }
-    #error { margin-top: 20px; font-size: 18px; color: red; }
-  </style>
-</head>
-<body>
-  <h1>Distributor Dashboard</h1>
-  <button id="generate_code_btn">Generate Secret Code for Pharmacy</button>
-  <div id="code_display"></div>
-  <div id="error"></div>
-
-  <script>
-    const btn = document.getElementById("generate_code_btn");
-    const codeDisplay = document.getElementById("code_display");
-    const errorDisplay = document.getElementById("error");
-
-    btn.addEventListener("click", async () => {
-      codeDisplay.textContent = "";
-      errorDisplay.textContent = "";
-      try {
-        const response = await fetch("/generate_distributor_code", { method: "POST" });
-        const data = await response.json();
-        if (data.code) {
-          codeDisplay.textContent = "Secret Code: " + data.code;
-        } else if (data.error) {
-          errorDisplay.textContent = "Error: " + data.error;
+    <meta charset="UTF-8">
+    <title>Distributor Dashboard - PharmaConnect</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <script>
+        async function createInvite() {
+            const response = await fetch("/create_invite", {method: "POST"});
+            const data = await response.json();
+            if (data.invite_link) {
+                const list = document.getElementById("invite-list");
+                const li = document.createElement("li");
+                li.className = "list-group-item";
+                li.innerHTML = `<strong>Invite Link:</strong> <a href="${data.invite_link}" target="_blank">${data.invite_link}</a>`;
+                list.appendChild(li);
+            }
         }
-      } catch (err) {
-        errorDisplay.textContent = "Error generating code!";
-      }
-    });
-  </script>
+    </script>
+</head>
+<body class="bg-light">
+<div class="container mt-5">
+    <div class="card shadow-lg rounded-4">
+        <div class="card-body p-4">
+            <h2 class="text-primary mb-4">Welcome Distributor!</h2>
+            <button class="btn btn-primary mb-3" onclick="createInvite()">+ Create Pharmacy Invite</button>
+            <h5>Existing Invites:</h5>
+            <ul class="list-group" id="invite-list">
+                {% for invite in invites %}
+                    <li class="list-group-item">
+                        <strong>{{ invite.token }}</strong> - {{ invite.status }}
+                        {% if invite.status == "pending" %}
+                            | <a href="/register/{{ invite.token }}" target="_blank">Register Link</a>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+            <div class="mt-4">
+                <a href="/" class="btn btn-outline-secondary">Logout</a>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

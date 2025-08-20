@@ -1,247 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pharmacy Dashboard</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f8f8f8;
-            margin: 0;
-            padding: 0;
-        }
-        header {
-            background: #007bff;
-            color: white;
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .search-bar input {
-            padding: 8px;
-            width: 250px;
-            border-radius: 5px;
-            border: none;
-        }
-        .main-content {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 20px;
-            padding: 20px;
-        }
-        .product-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 15px;
-        }
-        .product {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        .out-of-stock {
-            color: red;
-            font-weight: bold;
-        }
-        button {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        button:hover { background: #0056b3; }
-        .distributor-table {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 8px;
-            border-bottom: 1px solid #ddd;
-            text-align: center;
-        }
-        th {
-            background: #007bff;
-            color: white;
-        }
-        .qty-btn {
-            padding: 4px 8px;
-            background: #28a745;
-            color: white;
-            border-radius: 4px;
-            margin: 0 2px;
-            cursor: pointer;
-        }
-        .qty-btn.minus {
-            background: #dc3545;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pharmacy Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f9; margin: 0; padding: 0; }
+    header {
+      background: #28a745;
+      color: white;
+      padding: 15px;
+      text-align: center;
+    }
+    header button {
+      float: right;
+      background: #dc3545;
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      margin-top: -5px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    main { padding: 20px; }
+  </style>
 </head>
 <body>
-
-<header>
-    <h2>PharmaConnect - Pharmacy Dashboard</h2>
-    <div class="search-bar">
-        <input type="text" placeholder="Search medicines...">
-    </div>
-</header>
-
-<div class="main-content">
-    <!-- Left: Products -->
-    <section class="product-list" id="productList">
-        <!-- Products will be loaded by JS -->
-    </section>
-
-    <!-- Right: Distributor Request Table -->
-    <aside class="distributor-table">
-        <h3>Distributor Requests</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Medicine</th>
-                    <th>Qty</th>
-                </tr>
-            </thead>
-            <tbody id="distributorTable">
-                <!-- Rows added dynamically -->
-            </tbody>
-        </table>
-        <br>
-        <button onclick="sendRequest()">Send Request</button>
-    </aside>
-</div>
-
-<script>
-    const products = [
-        { name: "Paracetamol 500mg", price: 50, stock: true, quantity: 25, requestQty: 0 },
-        { name: "Amoxicillin 250mg", price: 120, stock: false, quantity: 0, requestQty: 0 },
-        { name: "Ibuprofen 200mg", price: 90, stock: true, quantity: 12, requestQty: 0 },
-        { name: "Vitamin C Tablets", price: 150, stock: false, quantity: 0, requestQty: 0 }
-    ];
-
-    function loadProducts() {
-        const list = document.getElementById("productList");
-        list.innerHTML = "";
-        products.forEach(p => {
-            list.innerHTML += `
-                <div class="product">
-                    <h3>${p.name}</h3>
-                    <p>₹${p.price}</p>
-                    ${p.stock 
-                        ? `<button>Add to Cart</button>` 
-                        : `<p class='out-of-stock'>Out of Stock</p>
-                           <button onclick='addToRequest("${p.name}")'>Add to Request</button>`
-                    }
-                </div>
-            `;
-        });
-    }
-
-    function loadDistributorTable() {
-        const table = document.getElementById("distributorTable");
-        table.innerHTML = "";
-        products.forEach((p, index) => {
-            table.innerHTML += `
-                <tr>
-                    <td>${p.name}</td>
-                    <td>
-                        <button class="qty-btn minus" onclick="changeQty(${index}, -1)">-</button>
-                        ${p.requestQty}
-                        <button class="qty-btn" onclick="changeQty(${index}, 1)">+</button>
-                    </td>
-                </tr>
-            `;
-        });
-    }
-
-    function changeQty(index, change) {
-        products[index].requestQty = Math.max(0, products[index].requestQty + change);
-        loadDistributorTable();
-    }
-
-    function addToRequest(name) {
-        const item = products.find(p => p.name === name);
-        if (item) {
-            item.requestQty++;
-            loadDistributorTable();
-        }
-    }
-
-    function sendRequest() {
-        const requestedItems = products.filter(p => p.requestQty > 0);
-        if (requestedItems.length === 0) {
-            alert("No medicines selected for request!");
-            return;
-        }
-        let summary = requestedItems.map(p => `${p.name} - ${p.requestQty}`).join("\n");
-        alert(`Request sent to Backup Distributor:\n${summary}`);
-    }
-
-    loadProducts();
-    loadDistributorTable();
-</script>
-
+  <header>
+    <h2>Welcome Pharmacy, {{ username }}</h2>
+    <a href="/logout"><button>Logout</button></a>
+  </header>
+  <main>
+    <p>This is your pharmacy dashboard.</p>
+  </main>
 </body>
 </html>
-
-
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Pharmacy Dashboard</title>
-    <style>
-        .outofstock { color: red; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <h2>Pharmacy Stock</h2>
-    <table id="stockTable" border="1">
-        <thead>
-            <tr>
-                <th>Medicine</th>
-                <th>Quantity</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-
-    <!-- ✅ Add your JavaScript here -->
-    <script>
-        async function loadStock() {
-            const res = await fetch("http://127.0.0.1:5000/stock");
-            const stock = await res.json();
-            const tbody = document.querySelector("#stockTable tbody");
-            tbody.innerHTML = "";
-            stock.forEach(item => {
-                let status = item.qty > 0 ? "In Stock" : "Out of Stock";
-                let statusClass = item.qty > 0 ? "" : "outofstock";
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${item.medicine}</td>
-                        <td>${item.qty}</td>
-                        <td class="${statusClass}">${status}</td>
-                    </tr>
-                `;
-            });
-        }
-
-        // ✅ call the function when page loads
-        window.onload = loadStock;
-    </script>
-</body>
-</html>
-
